@@ -1,32 +1,62 @@
 pipeline {
-agent any
-parameters {
-choice(
-name: 'ENVIRONMENT',
-choices: ['dev', 'qa', 'prod'],
-description: 'Select the deployment environment'
-)
+    agent any
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'qa', 'prod'],
+            description: 'Select the deployment environment'
+        )
+    }
+
+    stages {
+
+        stage('SCM code') {
+            steps {
+                git 'https://github.com/hellokaton/java11-examples.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Publish') {
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
+            steps {
+                archiveArtifacts 'target/*.jar'
+            }
+        }
+    }
+
+    post {
+        success {
+            slackSend(
+                channel: '#jenkins-builds',
+                color: 'good',
+                message: "SUCCESS: Job ${env.JOB_NAME} #${env.BUILD_NUMBER} completed successfully for ${params.ENVIRONMENT}"
+            )
+        }
+
+        failure {
+            slackSend(
+                channel: '#jenkins-builds',
+                color: 'danger',
+                message: "FAILURE: Job ${env.JOB_NAME} #${env.BUILD_NUMBER} failed for ${params.ENVIRONMENT}"
+            )
+        }
+
+        aborted {
+            slackSend(
+                channel: '#jenkins-builds',
+                color: 'warning',
+                message: "ABORTED: Job ${env.JOB_NAME} #${env.BUILD_NUMBER} was aborted"
+            )
+        }
+    }
 }
-stages {
-stage('SCM code') {
-steps {
-git 'https://github.com/hellokaton/java11-examples.git'
-}
-}
-stage('Build') {
-steps {
-sh 'mvn clean package'
-}
-}
-stage('Publish') {
-when {
-expression { params.ENVIRONMENT == 'prod' }
-}
-steps {
-// Add steps to publish artifacts or deploy the application for 'prod'
-// For example, you can use the 'archiveArtifacts' step to archive built artifacts
-archiveArtifacts 'target/*.jar'
-}
-}
-}
-}
+
