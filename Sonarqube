@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'MAVEN3'
-    }
-
     stages {
 
         stage('Checkout SCM') {
@@ -26,28 +22,9 @@ pipeline {
             }
         }
 
-        stage('Generate Reports') {
-            steps {
-                sh 'mvn verify'
-            }
-        }
-
         stage('Package') {
             steps {
                 sh 'mvn package'
-            }
-        }
-
-        stage('Install Sonar Scanner') {
-            steps {
-                sh '''
-                if [ ! -d "/opt/sonar-scanner" ]; then
-                    sudo wget -q -O /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-                    sudo unzip -o /tmp/sonar-scanner.zip -d /opt/
-                    sudo mv /opt/sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner
-                    sudo ln -sf /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
-                fi
-                '''
             }
         }
 
@@ -69,13 +46,5 @@ pipeline {
             }
         }
     }
-
-    post {
-        success {
-            echo "Pipeline completed successfully"
-        }
-        failure {
-            echo "Pipeline failed"
-        }
-    }
 }
+
