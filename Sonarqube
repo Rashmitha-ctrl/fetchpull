@@ -1,0 +1,81 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'MAVEN3'
+    }
+
+    stages {
+
+        stage('Checkout SCM') {
+            steps {
+                git branch: 'master',
+                    url: 'https://github.com/hellokaton/java11-examples.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Generate Reports') {
+            steps {
+                sh 'mvn verify'
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Install Sonar Scanner') {
+            steps {
+                sh '''
+                if [ ! -d "/opt/sonar-scanner" ]; then
+                    sudo wget -q -O /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+                    sudo unzip -o /tmp/sonar-scanner.zip -d /opt/
+                    sudo mv /opt/sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner
+                    sudo ln -sf /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
+                fi
+                '''
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('SONAR_TOKEN')
+            }
+            steps {
+                sh '''
+                sonar-scanner \
+                -Dsonar.projectKey=owtest23_sample-java-sonar \
+                -Dsonar.organization=owtest23 \
+                -Dsonar.sources=src/main/java \
+                -Dsonar.java.binaries=target/classes \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.login=$SONAR_TOKEN \
+                -Dsonar.qualitygate.wait=true
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully"
+        }
+        failure {
+            echo "Pipeline failed"
+        }
+    }
+}
